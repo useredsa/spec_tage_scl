@@ -6,10 +6,12 @@
 #include <mbp/core/predictor.hpp>
 #include <nlohmann/json.hpp>
 
-#include "template_lib/tagescl.h"
+#include "../../tagescl.hpp"
+
+namespace tagescl {
 
 template <class CONFIG>
-struct TageScl : mbp::Predictor {
+struct MbpTageScl : mbp::Predictor {
   using Impl = Tage_SC_L<CONFIG>;
   enum State {
     kNone,
@@ -22,7 +24,7 @@ struct TageScl : mbp::Predictor {
   std::uint64_t currentIp;
   State state;
 
-  TageScl(std::size_t maxInflightBranches)
+  MbpTageScl(std::size_t maxInflightBranches)
       : impl(maxInflightBranches), branchId(0), currentIp(0), state(kNone){};
 
   bool predict(uint64_t ip) override {
@@ -68,5 +70,7 @@ struct TageScl : mbp::Predictor {
     };
   }
 };
+
+}  // namespace tagescl
 
 #endif  // TAGESCL_ZIP_HIST_MBPLIB_COMPAT_LAYER_HPP_

@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "template_lib/tagescl.h"
+#include "tagescl/tagescl.hpp"
 
 #ifndef MAX_WRONG_PATH_BRANCHES
 #error MAX_WRONG_PATH_BRANCHES not defined
@@ -20,7 +20,7 @@
 constexpr int kMaxWrongPathBranches = MAX_WRONG_PATH_BRANCHES;
 
 template <class CONFIG>
-mbp::json SimulateWithRandomWrongPath(Tage_SC_L<CONFIG>& branchPredictor,
+mbp::json SimulateWithRandomWrongPath(tagescl::Tage_SC_L<CONFIG>& bp,
                                       const mbp::SimArgs& args) {
   const auto& [tracepath, warmupInstrs, simInstr, stopAtInstr] = args;
   mbp::SbbtReader trace{tracepath};
@@ -47,36 +47,32 @@ mbp::json SimulateWithRandomWrongPath(Tage_SC_L<CONFIG>& branchPredictor,
     if (b.isConditional()) {
       predictedTaken = prediction;
     }
-    branchPredictor.update_speculative_state(bId, b.ip(), bType, predictedTaken,
-                                             b.target());
+    bp.update_speculative_state(bId, b.ip(), bType, predictedTaken, b.target());
     if (b.isConditional()) {
       bool mispredicted = predictedTaken != b.isTaken();
       if (mispredicted) {
         int wrongPathBranches = std::rand() % (1 + kMaxWrongPathBranches);
         while (wrongPathBranches--) {
-          Branch_Type rndBranchType;
+          tagescl::Branch_Type rndBranchType;
           rndBranchType.is_conditional = std::rand() % 2;
           rndBranchType.is_indirect = (std::rand() % 20) == 0;
           std::uint64_t rndBranchIp = b.ip() + std::rand();
           std::uint64_t rndBranchTarget = rndBranchIp + std::rand();
-          int rndBranchId = branchPredictor.get_new_branch_id();
-          bool rndBranchPred =
-              branchPredictor.get_prediction(rndBranchId, rndBranchIp);
-          branchPredictor.update_speculative_state(rndBranchId, rndBranchIp,
-                                                   rndBranchType, rndBranchPred,
-                                                   rndBranchTarget);
+          int rndBranchId = bp.get_new_branch_id();
+          bool rndBranchPred = bp.get_prediction(rndBranchId, rndBranchIp);
+          bp.update_speculative_state(rndBranchId, rndBranchIp, rndBranchType,
+                                      rndBranchPred, rndBranchTarget);
         }
-        branchPredictor.flush_branch_and_repair_state(bId, b.ip(), bType,
-                                                      b.isTaken(), b.target());
+        bp.flush_branch_and_repair_state(bId, b.ip(), bType, b.isTaken(),
+                                         b.target());
       }
-      branchPredictor.commit_state(bId, b.ip(), bType, b.isTaken());
+      bp.commit_state(bId, b.ip(), bType, b.isTaken());
       if (instrNum >= warmupInstrs) {
         numBranches += 1;
         mispredictions += mispredicted;
       }
     }
-    branchPredictor.commit_state_at_retire(bId, b.ip(), bType, b.isTaken(),
-                                           b.target());
+    bp.commit_state_at_retire(bId, b.ip(), bType, b.isTaken(), b.target());
   }
   auto endTime = std::chrono::high_resolution_clock::now();
   double simulationTime =
@@ -120,11 +116,11 @@ mbp::json SimulateWithRandomWrongPath(Tage_SC_L<CONFIG>& branchPredictor,
 }
 
 #if TAGE_SC_L_SIZE == 64
-static Tage_SC_L<TAGE_SC_L_CONFIG_64KB> branchPredictor(1 +
-                                                        kMaxWrongPathBranches);
+static tagescl::Tage_SC_L<tagescl::CONFIG_64KB> branchPredictor(
+    1 + kMaxWrongPathBranches);
 #elif TAGE_SC_L_SIZE == 80
-static Tage_SC_L<TAGE_SC_L_CONFIG_80KB> branchPredictor(1 +
-                                                        kMaxWrongPathBranches);
+static tagescl::Tage_SC_L<tagescl::CONFIG_80KB> branchPredictor(
+    1 + kMaxWrongPathBranches);
 #else
 #error Unsupported TAGE_SC_L_SIZE setting.
 #endif
