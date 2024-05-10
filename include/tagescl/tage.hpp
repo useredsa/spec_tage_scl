@@ -72,6 +72,7 @@ class Long_History_Register {
   void retire(int num_retire_bits) {
     assert(num_retire_bits > 0 && num_retire_bits <= num_speculative_bits_);
     num_speculative_bits_ -= num_retire_bits;
+    commit_head_ += num_retire_bits;
   }
 
   // Random access interface, i=0 is the most recent branch (head).
@@ -79,7 +80,9 @@ class Long_History_Register {
     return history_bits_[(head_ + i) & buffer_access_mask_];
   }
 
-  int64_t head_idx() const { return head_; }
+  const int64_t& head_idx() const { return head_; }
+
+  const int64_t& commit_head_idx() const { return commit_head_; }
 
  private:
   int num_speculative_bits_ = 0;  // keeps track of how many bits can be
@@ -87,6 +90,7 @@ class Long_History_Register {
                                   // bits in the most significant position.
   std::vector<bool> history_bits_;
   int64_t head_ = 0;
+  int64_t commit_head_ = 0;
   int64_t buffer_size_;
   int64_t buffer_access_mask_;
   int64_t max_num_speculative_bits_;
@@ -230,6 +234,7 @@ struct Tage_Prediction_Info {
   int num_global_history_bits;
   int64_t global_history_head_checkpoint_;
   int64_t path_history_checkpoint;
+  int64_t path_history_commit_checkpoint;
 };
 
 template <class TAGE_CONFIG>
@@ -244,7 +249,6 @@ class Tage_Histories {
   void push_into_history(uint64_t br_pc, uint64_t br_target,
                          Branch_Type br_type, bool branch_dir,
                          Tage_Prediction_Info<TAGE_CONFIG>* prediction_info) {
-    head_old_ = history_register_.head_idx();
     int num_bit_inserts = 2;
     if (br_type.is_indirect && !br_type.is_conditional) {
       num_bit_inserts = 3;
@@ -278,6 +282,7 @@ class Tage_Histories {
 
     path_history_ =
         path_history_ & ((1 << TAGE_CONFIG::PATH_HISTORY_WIDTH) - 1);
+    prediction_info->path_history_commit_checkpoint = path_history_;
   }
 
   void intialize_folded_history(void);
@@ -301,8 +306,7 @@ class Tage_Histories {
       folded_histories_for_tags_1_;
 
   int64_t path_history_;
-  int64_t head_old_;
-  int64_t path_history_old_;
+  int64_t commit_path_history_;
 };
 
 template <class TAGE_CONFIG>
@@ -397,6 +401,9 @@ class Tage {
                     bool final_prediction) {
     const int* indices = prediction_info.indices;
     const int* tags = prediction_info.tags;
+
+    tage_histories_.commit_path_history_ =
+        prediction_info.path_history_commit_checkpoint;
 
     bool allocate_new_entry =
         (prediction_info.prediction != resolve_dir) &&
@@ -587,7 +594,6 @@ class Tage {
       const Tage_Prediction_Info<TAGE_CONFIG>& prediction_info) {
     tage_histories_.history_register_.retire(
         prediction_info.num_global_history_bits);
-    tage_histories_.path_history_old_ = tage_histories_.path_history_;
   }
 
   void global_recover_speculative_state(
@@ -716,8 +722,9 @@ void Tage_Histories<TAGE_CONFIG>::intialize_folded_history(void) {
 template <class TAGE_CONFIG>
 void Tage<TAGE_CONFIG>::intialize_predictor_state(void) {
   tick_ = 0;
-  random_number_gen_.phist_ptr_ = &tage_histories_.path_history_old_;
-  random_number_gen_.ptghist_ptr_ = &tage_histories_.head_old_;
+  random_number_gen_.phist_ptr_ = &tage_histories_.commit_path_history_;
+  random_number_gen_.ptghist_ptr_ =
+      &tage_histories_.history_register_.commit_head_idx();
 }
 
 template <class TAGE_CONFIG>

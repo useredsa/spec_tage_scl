@@ -33,10 +33,11 @@ template <class CONFIG>
 struct Tage_SC_L_Prediction_Info {
   Tage_Prediction_Info<typename CONFIG::TAGE> tage;
   Loop_Prediction_Info<typename CONFIG::LOOP> loop;
-  bool tage_or_loop_prediction;
   SC_Prediction_Info sc;
-  bool final_prediction;
   uint64_t br_pc;
+  int rng_seed;
+  bool tage_or_loop_prediction;
+  bool final_prediction;
 };
 
 class Tage_SC_L_Base {
@@ -237,6 +238,8 @@ void Tage_SC_L<CONFIG>::flush_branch_and_repair_state(int64_t branch_id,
     statistical_corrector_.global_recover_speculative_state(prediction_info.sc);
   }
 
+  random_number_gen_.seed_ = prediction_info.rng_seed;
+
   // Finally, update the speculative histories again using the resolved
   // direction of the branch.
   tage_.update_speculative_state(br_pc, br_target, br_type, resolve_dir,
@@ -277,6 +280,7 @@ void Tage_SC_L<CONFIG>::update_speculative_state(int64_t branch_id,
                                                  bool branch_dir,
                                                  uint64_t br_target) {
   auto& prediction_info = prediction_info_buffer_[branch_id];
+  prediction_info.rng_seed = random_number_gen_.seed_;
   tage_.update_speculative_state(br_pc, br_target, br_type, branch_dir,
                                  &prediction_info.tage);
   if (CONFIG::USE_LOOP_PREDICTOR) {
