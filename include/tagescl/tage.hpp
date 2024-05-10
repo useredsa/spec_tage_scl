@@ -39,9 +39,9 @@ class Long_History_Register {
  public:
   // Buffer_size needs to be a power of 2. (buffer_size - history_size) should
   // be large enough to cover speculative branches that are not yet retired.
-  Long_History_Register(int max_in_flight_branches) : history_bits_() {
+  Long_History_Register(int max_in_flight_bits) : history_bits_() {
     int log_buffer_size =
-        get_min_num_bits_to_represent(history_size + max_in_flight_branches);
+        get_min_num_bits_to_represent(history_size + max_in_flight_bits);
     buffer_size_ = 1 << log_buffer_size;
     buffer_access_mask_ = (1 << log_buffer_size) - 1;
     max_num_speculative_bits_ = buffer_size_ - history_size;
@@ -236,7 +236,7 @@ template <class TAGE_CONFIG>
 class Tage_Histories {
  public:
   Tage_Histories(int max_in_flight_branches)
-      : history_register_(max_in_flight_branches) {
+      : history_register_(3 * max_in_flight_branches) {
     path_history_ = 0;
     intialize_folded_history();
   }
