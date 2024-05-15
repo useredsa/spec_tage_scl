@@ -17,21 +17,42 @@ endfunction()
 add_executable(mbp_tagescl_64kb mbplib_sim_main.cpp)
 add_test_compile_options(mbp_tagescl_64kb)
 target_compile_definitions(mbp_tagescl_64kb PRIVATE TAGE_SC_L_SIZE=64)
-target_link_libraries(mbp_tagescl_64kb PRIVATE mbp_sim mbp_trace_reader)
+target_link_libraries(mbp_tagescl_64kb
+  PRIVATE mbp_sim mbp_trace_reader)
 
-add_executable(mbp_tagescl_80kb mbplib_sim_main.cpp)
-add_test_compile_options(mbp_tagescl_80kb)
-target_compile_definitions(mbp_tagescl_80kb PRIVATE TAGE_SC_L_SIZE=80)
-target_link_libraries(mbp_tagescl_80kb PRIVATE mbp_sim mbp_trace_reader)
+# add_executable(mbp_tagescl_80kb mbplib_sim_main.cpp)
+# add_test_compile_options(mbp_tagescl_80kb)
+# target_compile_definitions(mbp_tagescl_80kb PRIVATE TAGE_SC_L_SIZE=80)
+# target_link_libraries(mbp_tagescl_80kb
+#   PRIVATE mbp_sim mbp_trace_reader)
 
-add_executable(test_spec_tagescl_64kb random_spec_sbbt_sim.cpp)
-add_test_compile_options(test_spec_tagescl_64kb)
-target_compile_definitions(test_spec_tagescl_64kb
-  PRIVATE MAX_WRONG_PATH_BRANCHES=10 TAGE_SC_L_SIZE=64)
-target_link_libraries(test_spec_tagescl_64kb PRIVATE mbp_sim mbp_trace_reader)
+# add_executable(test_spec_tagescl_64kb random_spec_sbbt_sim.cpp)
+# add_test_compile_options(test_spec_tagescl_64kb)
+# target_compile_definitions(test_spec_tagescl_64kb
+#   PRIVATE MAX_WRONG_PATH_BRANCHES=10 TAGE_SC_L_SIZE=64)
+# target_link_libraries(test_spec_tagescl_64kb
+#   PRIVATE mbp_sim mbp_trace_reader)
 
-add_executable(test_spec_tagescl_80kb random_spec_sbbt_sim.cpp)
-add_test_compile_options(test_spec_tagescl_80kb)
-target_compile_definitions(test_spec_tagescl_80kb
-  PRIVATE MAX_WRONG_PATH_BRANCHES=10 TAGE_SC_L_SIZE=80)
-target_link_libraries(test_spec_tagescl_80kb PRIVATE mbp_sim mbp_trace_reader)
+# foreach(cpi RANGE 0 1000 10)
+foreach(cpi IN ITEMS 0 50)
+  foreach(wpb IN ITEMS 0 10)
+    add_executable(wp_${cpi}_${wpb}_tagescl_64kb wrong_path_sim.cpp)
+    add_test_compile_options(wp_${cpi}_${wpb}_tagescl_64kb)
+    target_compile_definitions(wp_${cpi}_${wpb}_tagescl_64kb
+      PRIVATE
+        TAGE_SC_L_SIZE=64
+        NUM_CORRECT_PATH_INSTRS=${cpi}
+        NUM_WRONG_PATH_BRANCHES=${wpb})
+    target_link_libraries(wp_${cpi}_${wpb}_tagescl_64kb
+      PRIVATE mbp_sim mbp_trace_reader)
+  endforeach()
+endforeach()
+
+# foreach(k RANGE 10 1000 10)
+#   add_executable(test_late_commit_64kb_${k} late_commit_sim.cpp)
+#   add_test_compile_options(test_late_commit_64kb_${k})
+#   target_compile_definitions(test_late_commit_64kb_${k}
+#     PRIVATE NUM_INFLIGHT_INSTRS=${k} TAGE_SC_L_SIZE=64)
+#   target_link_libraries(test_late_commit_64kb_${k}
+#     PRIVATE mbp_sim mbp_trace_reader)
+# endforeach()
