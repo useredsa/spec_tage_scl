@@ -149,51 +149,47 @@ struct Branch_Type {
 template <typename T>
 class Circular_Buffer {
  public:
-  Circular_Buffer(unsigned max_size) {
-    assert(max_size > 0);
-    int min_num_address_bits = get_min_num_bits_to_represent(max_size);
-    buffer_size_ = 1 << min_num_address_bits;
-    buffer_access_mask_ = (1 << min_num_address_bits) - 1;
-    buffer_.resize(buffer_size_);
-  }
+  Circular_Buffer(unsigned max_size)
+      : buffer_(1 << get_min_num_bits_to_represent(max_size)),
+        buffer_access_mask_(buffer_.size() - 1),
+        back_(-1),
+        front_(-1),
+        size_(0) {}
 
-  T& operator[](int64_t id) {
-    assert(id >= front_);
-    assert(id <= back_);
+  T& operator[](uint32_t id) {
+    assert(back_ - id < back_ - front_);
     return buffer_[id & buffer_access_mask_];
   }
 
-  int64_t back_id() const { return back_; }
+  uint32_t back_id() const { return back_; }
 
-  void deallocate_after(int64_t dealloc_id) {
-    assert(dealloc_id >= front_);
-    assert(dealloc_id <= back_);
-    size_ -= (back_ - dealloc_id);
-    back_ = dealloc_id;
+  void deallocate_after(uint32_t id) {
+    assert(back_ - id < back_ - front_);
+    size_ -= (back_ - id);
+    back_ = id;
   }
 
-  int64_t allocate_back() {
-    assert(size_ < buffer_size_);
+  uint32_t allocate_back() {
+    assert(size_ < buffer_.size());
     back_ += 1;
     size_ += 1;
     return back_;
   }
 
-  void deallocate_front(int64_t pop_id) {
+  void deallocate_front(uint32_t pop_id) {
+    front_ += 1;
     assert(pop_id == front_);
     assert(size_ > 0);
-    front_ += 1;
     size_ -= 1;
   }
 
  private:
   std::vector<T> buffer_;
-  int64_t buffer_size_;
-  int64_t buffer_access_mask_;
+  uint32_t buffer_access_mask_;
 
-  int64_t back_ = -1;
-  int64_t front_ = 0;
-  int64_t size_ = 0;
+  uint32_t back_;
+  uint32_t front_;
+  uint32_t size_;
 };
 
 }  // namespace tagescl

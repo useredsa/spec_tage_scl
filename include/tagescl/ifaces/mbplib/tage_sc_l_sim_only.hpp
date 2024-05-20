@@ -20,12 +20,12 @@ struct MbpTageScl : mbp::Predictor {
   };
 
   Impl impl;
-  std::int64_t branchId;
   std::uint64_t currentIp;
+  std::uint32_t branchId;
   State state;
 
   MbpTageScl(std::size_t maxInflightBranches)
-      : impl(maxInflightBranches), branchId(0), currentIp(0), state(kNone){};
+      : impl(maxInflightBranches), currentIp(0), branchId(0), state(kNone){};
 
   bool predict(uint64_t ip) override {
     assert(state == kNone or state == kCommited);

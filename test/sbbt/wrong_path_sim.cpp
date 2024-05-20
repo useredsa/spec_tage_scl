@@ -29,7 +29,7 @@ static_assert(kNumWrongPathBranches >= 0,
               "NUM_WRONG_PATH_BRANCHES shall be non-negative");
 
 struct RobEntry {
-  int bId;
+  std::uint32_t bId;
   std::int64_t instrNum;
   mbp::Branch b;
 };
@@ -75,7 +75,7 @@ mbp::json Sim(tagescl::Tage_SC_L<CONFIG>& bp, const mbp::SimArgs& args) {
     }
     if (instrNum >= stopAtInstr) break;
     branchIps.insert(b.ip());
-    int bId = bp.get_new_branch_id();
+    std::uint32_t bId = bp.get_new_branch_id();
     rob[back].instrNum = instrNum;
     rob[back].bId = bId;
     rob[back].b = b;
@@ -91,7 +91,7 @@ mbp::json Sim(tagescl::Tage_SC_L<CONFIG>& bp, const mbp::SimArgs& args) {
           rndType.is_indirect = (std::rand() % 20) == 0;
           std::uint64_t rndIp = b.ip() + std::rand();
           std::uint64_t rndTgt = rndIp + std::rand();
-          int rndId = bp.get_new_branch_id();
+          std::uint32_t rndId = bp.get_new_branch_id();
           bool rndPred = bp.get_prediction(rndId, rndIp);
           bp.update_speculative_state(rndId, rndIp, rndType, rndPred, rndTgt);
         }
