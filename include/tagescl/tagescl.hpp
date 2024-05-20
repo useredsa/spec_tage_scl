@@ -279,6 +279,11 @@ void Tage_SC_L<CONFIG>::commit_state_at_retire(uint32_t branch_id,
 }
 
 template <class CONFIG>
+void Tage_SC_L<CONFIG>::retire_non_branch_ip(uint32_t branch_id) {
+  // std::cerr << "retire_non_branch_ip(" << branch_id << ")\n";
+  prediction_info_buffer_.deallocate_front(branch_id);
+}
+
 template <class CONFIG>
 void Tage_SC_L<CONFIG>::update_speculative_state(uint32_t branch_id,
                                                  uint64_t br_pc,
