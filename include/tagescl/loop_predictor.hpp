@@ -102,12 +102,7 @@ class Loop_Predictor {
 
   void commit_state(uint64_t br_pc, bool resolve_dir,
                     const Loop_Prediction_Info<LOOP_CONFIG>& prediction_info,
-                    bool finally_mispredicted, bool tage_prediction) {}
-
-  void commit_state_at_retire(
-      uint64_t br_pc, bool resolve_dir,
-      const Loop_Prediction_Info<LOOP_CONFIG>& prediction_info,
-      bool finally_mispredicted, bool tage_prediction) {
+                    bool finally_mispredicted, bool tage_prediction) {
     if (prediction_info.hit_bank >= 0) {
       int index = prediction_info.indices.bank[prediction_info.hit_bank];
       if (table_[index].tag != prediction_info.tag) {
@@ -195,6 +190,11 @@ class Loop_Predictor {
       }
     }
   }
+
+  void commit_state_at_retire(
+      uint64_t br_pc, bool resolve_dir,
+      const Loop_Prediction_Info<LOOP_CONFIG>& prediction_info,
+      bool finally_mispredicted, bool tage_prediction) {}
 
   void global_recover_speculative_state(
       const Loop_Prediction_Info<LOOP_CONFIG>& prediction_info) {}

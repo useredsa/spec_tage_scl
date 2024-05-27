@@ -43,7 +43,12 @@ std::uint8_t O3_CPU::predict_branch(std::uint64_t ip) {
     // If we get here is because last_branch_result was not called.
     // Hence, the last ip was not branch and we should retire it
     // without doing any operation such as updating the history.
-    predictor.impl.retire_non_branch_ip(predictor.id);
+    // predictor.impl.retire_non_branch_ip(predictor.id);
+    tagescl::Branch_Type type;
+    type.is_conditional = false;
+    type.is_indirect = false;
+    predictor.impl.commit_state_at_retire(predictor.id, predictor.last_ip, type,
+                                          0, 0);
   }
   predictor.id = predictor.impl.get_new_branch_id();
   bool prediction = predictor.impl.get_prediction(predictor.id, ip);
@@ -60,10 +65,9 @@ void O3_CPU::last_branch_result(std::uint64_t ip, std::uint64_t target,
   tagescl::Branch_Type type;
   type.is_conditional =
       branch_type == BRANCH_CONDITIONAL or branch_type == BRANCH_OTHER;
-  type.is_indirect = branch_type == BRANCH_INDIRECT or
-                     branch_type == BRANCH_INDIRECT_CALL or
-                     branch_type == BRANCH_RETURN or
-                     branch_type == BRANCH_OTHER;
+  type.is_indirect =
+      branch_type == BRANCH_INDIRECT or branch_type == BRANCH_INDIRECT_CALL or
+      branch_type == BRANCH_RETURN or branch_type == BRANCH_OTHER;
   predictor.impl.update_speculative_state(predictor.id, ip, type, taken,
                                           target);
   if (type.is_conditional) {

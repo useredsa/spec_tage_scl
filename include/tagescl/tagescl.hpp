@@ -38,6 +38,7 @@ struct Tage_SC_L_Prediction_Info {
   int rng_seed;
   bool tage_or_loop_prediction;
   bool final_prediction;
+  bool updated_history;
 };
 
 class Tage_SC_L_Base {
@@ -89,6 +90,7 @@ class Tage_SC_L : public Tage_SC_L_Base {
     Tage<typename CONFIG::TAGE>::build_empty_prediction(&prediction_info.tage);
     Loop_Predictor<typename CONFIG::LOOP>::build_empty_prediction(
         &prediction_info.loop);
+    prediction_info.updated_history = false;
     return branch_id;
   }
 
@@ -201,10 +203,6 @@ void Tage_SC_L<CONFIG>::commit_state(uint32_t branch_id, uint64_t br_pc,
         br_pc, resolve_dir, prediction_info.loop,
         prediction_info.final_prediction != resolve_dir,
         prediction_info.tage.prediction);
-    loop_predictor_.commit_state_at_retire(
-        br_pc, resolve_dir, prediction_info.loop,
-        prediction_info.final_prediction != resolve_dir,
-        prediction_info.tage.prediction);
   }
 
   tage_.commit_state(br_pc, resolve_dir, prediction_info.tage,
@@ -265,15 +263,17 @@ void Tage_SC_L<CONFIG>::commit_state_at_retire(uint32_t branch_id,
                                                bool resolve_dir,
                                                uint64_t br_target) {
   auto& prediction_info = prediction_info_buffer_[branch_id];
-  // if (CONFIG::USE_LOOP_PREDICTOR) {
-  //  loop_predictor_.commit_state_at_retire(
-  //      br_pc, resolve_dir, prediction_info.loop,
-  //      prediction_info.final_prediction != resolve_dir,
-  //      prediction_info.tage.prediction);
-  //}
-  tage_.commit_state_at_retire(prediction_info.tage);
-  if (CONFIG::USE_SC) {
-    statistical_corrector_.commit_state_at_retire();
+  if (prediction_info.updated_history) {
+    if (CONFIG::USE_LOOP_PREDICTOR) {
+      loop_predictor_.commit_state_at_retire(
+        br_pc, resolve_dir, prediction_info.loop,
+        prediction_info.final_prediction != resolve_dir,
+        prediction_info.tage.prediction);
+    }
+    tage_.commit_state_at_retire(prediction_info.tage);
+    if (CONFIG::USE_SC) {
+      statistical_corrector_.commit_state_at_retire();
+    }
   }
   prediction_info_buffer_.deallocate_front(branch_id);
 }
@@ -292,6 +292,7 @@ void Tage_SC_L<CONFIG>::update_speculative_state(uint32_t branch_id,
                                                  uint64_t br_target) {
   auto& prediction_info = prediction_info_buffer_[branch_id];
   prediction_info.rng_seed = random_number_gen_.seed_;
+  prediction_info.updated_history = true;
   tage_.update_speculative_state(br_pc, br_target, br_type, branch_dir,
                                  &prediction_info.tage);
   if (CONFIG::USE_LOOP_PREDICTOR) {
