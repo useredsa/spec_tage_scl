@@ -54,6 +54,7 @@ class Tage_SC_L_Base {
                                       Branch_Type br_type, bool resolve_dir,
                                       uint64_t br_target) = 0;
   virtual void retire_non_branch_ip(uint32_t branch_id) = 0;
+  virtual void flush_branch(uint32_t branch_id) = 0;
   virtual void flush_branch_and_repair_state(uint32_t branch_id, uint64_t br_pc,
                                              Branch_Type br_type,
                                              bool resolve_dir,
@@ -127,10 +128,16 @@ class Tage_SC_L : public Tage_SC_L_Base {
   // Should be called directly after get_new_branch_id().
   void retire_non_branch_ip(uint32_t branch_id) override;
 
-  // Flushes the branch and all branches that came after it and repairs the
-  // speculative state of the predictor. It invalidated all branch_id of
-  // flushed
-  // branches.
+  // Flushes the branch and all branches that came after it
+  // and repairs the speculative state of the predictor.
+  // It invalidates the branch id of all branches after the flushed branch
+  // (including the flushed branch).
+  void flush_branch(uint32_t branch_id) override;
+
+  // Flushes the branch and all branches that came after it
+  // and repairs the speculative state of the predictor.
+  // It invalidates the branch ids of all branches
+  // strictly after the flushed branch.
   void flush_branch_and_repair_state(uint32_t branch_id, uint64_t br_pc,
                                      Branch_Type br_type, bool resolve_dir,
                                      uint64_t br_target) override;
@@ -218,7 +225,7 @@ void Tage_SC_L<CONFIG>::flush_branch_and_repair_state(uint32_t branch_id,
   // First iterate over all flushed branches from youngest to oldest and call
   // local recovery functions.
   for (uint32_t id = prediction_info_buffer_.back_id();
-       id - branch_id < (1U << 31); --id) {
+       id - branch_id < (uint32_t{1} << 31); --id) {
     auto& prediction_info = prediction_info_buffer_[id];
     tage_.local_recover_speculative_state(prediction_info.tage);
     if (CONFIG::USE_LOOP_PREDICTOR) {
@@ -254,6 +261,38 @@ void Tage_SC_L<CONFIG>::flush_branch_and_repair_state(uint32_t branch_id,
     statistical_corrector_.update_speculative_state(
         br_pc, resolve_dir, br_target, br_type, &prediction_info.sc);
   }
+}
+
+template <class CONFIG>
+void Tage_SC_L<CONFIG>::flush_branch(uint32_t branch_id) {
+  // First iterate over all flushed branches from youngest to oldest and
+  // call local recovery functions.
+  for (uint32_t id = prediction_info_buffer_.back_id();
+       id - branch_id < (uint32_t{1} << 31); --id) {
+    auto& prediction_info = prediction_info_buffer_[id];
+    tage_.local_recover_speculative_state(prediction_info.tage);
+    if (CONFIG::USE_LOOP_PREDICTOR) {
+      loop_predictor_.local_recover_speculative_state(prediction_info.loop);
+    }
+    if (CONFIG::USE_SC) {
+      statistical_corrector_.local_recover_speculative_state(
+          prediction_info.br_pc, prediction_info.sc);
+    }
+  }
+
+  auto& prediction_info = prediction_info_buffer_[branch_id];
+  prediction_info_buffer_.deallocate_and_after(branch_id);
+
+  // Now call global recovery functions.
+  tage_.global_recover_speculative_state(prediction_info.tage);
+  if (CONFIG::USE_LOOP_PREDICTOR) {
+    loop_predictor_.global_recover_speculative_state(prediction_info.loop);
+  }
+  if (CONFIG::USE_SC) {
+    statistical_corrector_.global_recover_speculative_state(prediction_info.sc);
+  }
+
+  random_number_gen_.seed_ = prediction_info.rng_seed;
 }
 
 template <class CONFIG>

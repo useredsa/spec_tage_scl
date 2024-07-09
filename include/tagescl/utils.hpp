@@ -169,6 +169,12 @@ class Circular_Buffer {
     back_ = id;
   }
 
+  void deallocate_and_after(uint32_t id) {
+    assert((back_ - id + 1) < (back_ - front_ + 1));
+    size_ -= (back_ - id + 1);
+    back_ = id - 1;
+  }
+
   uint32_t allocate_back() {
     assert(size_ < buffer_.size());
     back_ += 1;
